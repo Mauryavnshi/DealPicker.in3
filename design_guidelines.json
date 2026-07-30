@@ -1,0 +1,139 @@
+{
+  "project_name": "DealPicker",
+  "theme": "dark",
+  "brand_identity": {
+    "concept": "Premium technology deals platform. Swiss & High-Contrast meets Editorial Future. Minimalist, technical, high-performance.",
+    "logos": {
+      "dark": "/logo-dark.png",
+      "light": "/logo-light.png"
+    }
+  },
+  "typography": {
+    "strategy": "No Inter. Mix premium geometric sans with tech-forward mono.",
+    "fonts": {
+      "heading": "Cabinet Grotesk",
+      "body": "Satoshi",
+      "mono": "JetBrains Mono"
+    },
+    "rules": {
+      "h1": "text-5xl sm:text-6xl font-black tracking-tighter leading-none",
+      "h2": "text-3xl sm:text-4xl font-bold tracking-tight",
+      "h3": "text-xl sm:text-2xl font-bold tracking-tight",
+      "body": "text-base leading-relaxed text-zinc-300",
+      "prices_and_stats": "font-mono tracking-tight",
+      "labels": "text-xs font-bold uppercase tracking-[0.2em] text-zinc-400"
+    }
+  },
+  "colors": {
+    "strategy": "Deep Zinc (Obsidian) foundation with vibrant Orange triggers. Avoid generic grays.",
+    "tokens": {
+      "background": "hsl(240 10% 3.9%)",
+      "foreground": "hsl(0 0% 98%)",
+      "primary": "hsl(24 95% 58%)",
+      "primary_foreground": "hsl(0 0% 100%)",
+      "card": "hsl(240 10% 3.9%)",
+      "card_foreground": "hsl(0 0% 98%)",
+      "muted": "hsl(240 3.7% 15.9%)",
+      "muted_foreground": "hsl(240 5% 64.9%)",
+      "border": "hsl(240 3.7% 15.9%)",
+      "border_hover": "hsla(24, 95%, 58%, 0.5)",
+      "accent": "hsl(240 3.7% 15.9%)",
+      "accent_foreground": "hsl(0 0% 98%)"
+    }
+  },
+  "layouts_and_grids": {
+    "spacing_scale": "Luxurious. Use p-6, p-8, p-12 for containers. Double the standard whitespace.",
+    "product_grid": "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6",
+    "bento_grid": "grid-cols-1 md:grid-cols-12 gap-6 for featured sections."
+  },
+  "components": {
+    "Navbar": {
+      "style": "Sticky top-0 z-50. Glassmorphism: backdrop-blur-xl bg-background/70 border-b border-border.",
+      "layout": "Left: Logo. Center: Categories (hidden on mobile). Right: Search, Theme, Lang, Hamburger."
+    },
+    "HeroSection": {
+      "visuals": "Technical grid background (bg-grid-white/[0.02]) with top-center radial spotlight (orange-900/20).",
+      "content": "Verified affiliate badge (pill), massive H1, stats row (font-mono), 'Explore Deals' CTA (orange)."
+    },
+    "ProductCard": {
+      "container": "relative flex flex-col bg-card border border-border rounded-2xl overflow-hidden transition-all duration-300 group",
+      "hover_state": "hover:border-primary/50 hover:shadow-[0_8px_30px_rgba(249,115,22,0.12)] hover:-translate-y-1",
+      "image_wrapper": "relative h-48 w-full p-6 bg-zinc-900/50 flex items-center justify-center",
+      "badges": "Absolute top-3 left-3. Discount badge: bg-primary text-white text-xs font-bold px-2 py-1 rounded-full",
+      "content": "p-5 flex flex-col gap-2",
+      "price_row": "flex items-baseline gap-2 font-mono. Current: text-xl font-bold text-white. Old: text-sm line-through text-zinc-500",
+      "meta": "Rating (stars), review count, Prime badge, affiliate disclosure text (text-[10px] text-zinc-500)",
+      "actions": "Bottom row: 'View Deal' button (w-full, primary color or subtle zinc hover), Wishlist (icon), Share (icon)"
+    },
+    "CategoryRail": {
+      "style": "Horizontal scroll (hide scrollbar) or flex-wrap. Items: pill or squircle cards.",
+      "item": "flex items-center gap-2 px-4 py-3 border border-border rounded-xl bg-zinc-900/30 hover:bg-zinc-800 transition-colors cursor-pointer text-sm font-bold"
+    },
+    "SearchBar": {
+      "style": "Premium elongated input. bg-zinc-900 border-border focus:border-primary/50 focus:ring-1 focus:ring-primary/50.",
+      "dropdown": "Instant suggestions panel attached below, blurred background, divided into Products, Brands, Guides."
+    }
+  },
+  "motion": {
+    "easings": "cubic-bezier(0.22, 1, 0.36, 1)",
+    "durations": "200ms for colors, 400ms for transforms.",
+    "rules": "No bouncy animations. Smooth, intentional, hardware-accelerated transitions only."
+  },
+  "assets": {
+    "icons_library": "lucide-react (clean, tech-focused)",
+    "image_urls": {
+      "hero_background": "https://images.unsplash.com/photo-1771014846919-3a1cf73aeea1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njl8MHwxfHNlYXJjaHwxfHxkYXJrJTIwdGVjaCUyMHByZW1pdW0lMjBkZXNrJTIwc2V0dXB8ZW58MHx8fHwxNzg1NDM1ODIxfDA&ixlib=rb-4.1.0&q=85",
+      "placeholder_laptop": "https://images.pexels.com/photos/25839642/pexels-photo-25839642.jpeg",
+      "placeholder_phone": "https://images.unsplash.com/photo-1773414422164-eefdc240da58?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjV8MHwxfHNlYXJjaHwzfHxwcmVtaXVtJTIwc21hcnRwaG9uZSUyMGRhcmslMjBiYWNrZ3JvdW5kfGVufDB8fHx8MTc4NTQzNTgyMHww&ixlib=rb-4.1.0&q=85",
+      "placeholder_headphones": "https://images.unsplash.com/photo-1715617133977-aeda55fa2930?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzOTB8MHwxfHNlYXJjaHw0fHxoZWFkcGhvbmVzJTIwbmVvbiUyMG9yYW5nZSUyMGRhcmt8ZW58MHx8fHwxNzg1NDM1ODIxfDA&ixlib=rb-4.1.0&q=85",
+      "placeholder_smartwatch": "https://images.unsplash.com/photo-1782134518937-bae919213a39?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzl8MHwxfHNlYXJjaHwxfHxzbWFydHdhdGNoJTIwcHJlbWl1bSUyMGRhcmt8ZW58MHx8fHwxNzg1NDM1ODI3fDA&ixlib=rb-4.1.0&q=85"
+    }
+  },
+  "accessibility_and_testing": {
+    "contrast": "Ensure text over orange has high contrast (use white or zinc-950).",
+    "testing_attributes": "All interactive elements MUST include data-testid attributes (e.g., data-testid='nav-search-input', data-testid='product-card-view-deal')."
+  },
+  "universal_guidelines_for_main_agent": [
+    "DO NOT output generic purple/violet gradients. Stick to the Zinc + Orange palette.",
+    "DO NOT use Inter font. Configure Cabinet Grotesk, Satoshi, and JetBrains Mono in Next.js layout.",
+    "Implement full Hindi/English i18n support in routing (App Router).",
+    "Product images must have explicit width/height or fill with object-contain for optimal LCP.",
+    "DO NOT make backgrounds fully transparent if content sits beneath them. Use backdrop-blur + bg-background/70.",
+    "Use standard HTML/Tailwind for structural creative layouts, but rely on Shadcn UI for complex inputs, dropdowns, and dialogs.",
+    "Add transition-all for interactive elements, but DO NOT use 'transition: all' in global CSS. Use Tailwind classes.",
+    "Build a custom 404 page that matches the premium brand look.",
+    "Use data-testid on every single button and link for automated QA."
+  ],
+  "tailwind_extensions": {
+    "instructions": "Merge these into your tailwind.config.js theme section.",
+    "theme": {
+      "extend": {
+        "colors": {
+          "border": "hsl(var(--border))",
+          "input": "hsl(var(--input))",
+          "ring": "hsl(var(--ring))",
+          "background": "hsl(var(--background))",
+          "foreground": "hsl(var(--foreground))",
+          "primary": {
+            "DEFAULT": "hsl(var(--primary))",
+            "foreground": "hsl(var(--primary-foreground))"
+          },
+          "card": {
+            "DEFAULT": "hsl(var(--card))",
+            "foreground": "hsl(var(--card-foreground))"
+          }
+        },
+        "fontFamily": {
+          "sans": ["var(--font-satoshi)", "sans-serif"],
+          "heading": ["var(--font-cabinet)", "sans-serif"],
+          "mono": ["var(--font-jetbrains)", "monospace"]
+        },
+        "animation": {
+          "spotlight": "spotlight 2s ease .75s 1 forwards",
+          "marquee": "marquee 25s linear infinite"
+        }
+      }
+    },
+    "css_variables_example": ":root {\n  --background: 240 10% 3.9%;\n  --foreground: 0 0% 98%;\n  --card: 240 10% 3.9%;\n  --card-foreground: 0 0% 98%;\n  --primary: 24 95% 58%;\n  --primary-foreground: 0 0% 100%;\n  --border: 240 3.7% 15.9%;\n  --input: 240 3.7% 15.9%;\n  --ring: 24 95% 58%;\n}"
+  }
+}
