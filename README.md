@@ -32,17 +32,23 @@ yarn install
 ```
 
 ### 2. Environment
-Copy `.env.example` to `.env` and update:
+Copy `.env.example` to `.env` and set your own local/production values:
+
 ```bash
 cp .env.example .env
 ```
 
-```env
-MONGO_URL=mongodb://localhost:27017
-DB_NAME=dealpicker
-ADMIN_PASSWORD=change-me-in-production
-NEXT_PUBLIC_BASE_URL=http://localhost:3000
-```
+Required server-side variables:
+- `MONGO_URL`: MongoDB connection URI (use MongoDB Atlas for Vercel)
+- `DB_NAME`: database name
+- `ADMIN_EMAIL`: admin login email
+- `ADMIN_PASSWORD`: unique password (minimum 12 characters)
+- `ADMIN_JWT_SECRET`: random secret of at least 32 characters
+
+Optional public variable:
+- `NEXT_PUBLIC_SITE_URL`: canonical site URL, e.g. `http://localhost:3000`
+
+Never commit `.env` or real credentials. Configure production values in Vercel Project Settings → Environment Variables.
 
 ### 3. Run
 ```bash
@@ -52,7 +58,7 @@ Open http://localhost:3000 — the DB auto-seeds 9 sample products on first hit.
 
 ### 4. Access Admin
 1. Click **Admin** in the header
-2. Password: value of `ADMIN_PASSWORD` (default `dealpicker2025`)
+2. Sign in using `ADMIN_EMAIL` and `ADMIN_PASSWORD` configured in the server environment.
 3. Add / edit / delete products, toggle Trending / Today's Deal / Featured / Publish
 
 ## 🗂️ Project Structure
@@ -84,14 +90,14 @@ app/
 | POST   | `/api/products`              | Bearer | Create product                   |
 | PUT    | `/api/products/:id`          | Bearer | Update product                   |
 | DELETE | `/api/products/:id`          | Bearer | Delete product                   |
-| POST   | `/api/admin/login`           | –      | Exchange password for token      |
+| POST   | `/api/auth/admin/login`      | –      | Exchange credentials for token   |
 
 All product-write endpoints require `Authorization: Bearer <token>` obtained from `/api/admin/login`.
 
 ## 🚀 Deploy to Vercel
 1. Push this repo to GitHub
 2. Import into Vercel
-3. Add the env vars (`MONGO_URL`, `DB_NAME`, `ADMIN_PASSWORD`, `NEXT_PUBLIC_BASE_URL`)
+3. Add the env vars (`MONGO_URL`, `DB_NAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_JWT_SECRET`, `NEXT_PUBLIC_SITE_URL`)
 4. Deploy — Vercel auto-detects Next.js 15
 
 For MongoDB in production, use [MongoDB Atlas](https://www.mongodb.com/atlas) (free tier is enough to start).
