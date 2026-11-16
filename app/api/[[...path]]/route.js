@@ -216,7 +216,7 @@ async function handleInner(req, { params }) {
 
   if (method === 'GET' && path.startsWith('products/')) {
     const slug = path.replace('products/', '');
-    const item = await db.collection('products').findOne({ slug });
+    const item = await db.collection('products').findOne({ slug, published: true });
     if (!item) return j({ error: 'Not found' }, 404);
     return publicJ(sanitize(item), 60, 300);
   }
