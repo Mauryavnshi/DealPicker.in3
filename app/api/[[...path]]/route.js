@@ -213,6 +213,9 @@ async function handleInner(req, { params }) {
     const query = { published: true };
     if (category) query.category = category;
     if (brand) query.brandSlug = slugify(brand);
+    if (url.searchParams.get('todaysDeal') === 'true') query.todaysDeal = true;
+    if (url.searchParams.get('trending') === 'true') query.trending = true;
+    if (url.searchParams.get('featured') === 'true') query.featured = true;
     if (q) {
       const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
       query.$or = [{ name: rx }, { brand: rx }, { model: rx }, { category: rx }];
