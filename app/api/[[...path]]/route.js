@@ -34,7 +34,12 @@ async function ensureAdminSeed() {
 async function ensureTaxonomySeed() {
   if (_seededTaxonomy) return;
   try {
-    const db = await getDb();
+    // Reject unauthenticated admin requests before opening a database connection.
+  const adminRoute = path.startsWith('admin/');
+  const admin = requireAdmin(req);
+  if (adminRoute && !admin) return j({ error: 'Unauthorized' }, 401);
+
+  const db = await getDb();
     const cn = await db.collection('taxonomy_categories').countDocuments();
     if (cn === 0) {
       await db.collection('taxonomy_categories').insertMany(
@@ -120,7 +125,7 @@ async function handle(req, ctx) {
     // in Vercel's function logs instead of silently rendering empty
     // homepage sections.
     console.error('[api] unhandled error:', err);
-    return j({ error: 'Server error', detail: String(err?.message || err) }, 500);
+    return j({ error: 'Server error' }, 500);
   }
 }
 
@@ -169,7 +174,7 @@ async function handleInner(req, { params }) {
   // ---------- public taxonomy ----------
   if (method === 'GET' && path === 'categories') {
     const items = await db.collection('taxonomy_categories').find({}).sort({ order: 1 }).toArray();
-    return publicJ(sanitizeMany(items), 3600, 86400);
+    return publicJ(sanitizeMany(items), 60, 60);
   }
 
   if (method === 'GET' && path === 'brands') {
@@ -182,7 +187,7 @@ async function handleInner(req, { params }) {
       query = { slug: { $in: productBrands } };
     }
     const items = await db.collection('taxonomy_brands').find(query).sort({ order: 1 }).toArray();
-    return publicJ(sanitizeMany(items), 3600, 86400);
+    return publicJ(sanitizeMany(items), 60, 60);
   }
 
   if (method === 'GET' && path === 'models') {
@@ -193,7 +198,7 @@ async function handleInner(req, { params }) {
     if (brand) q.brandSlug = brand;
     if (category) q.categorySlug = category;
     const items = await db.collection('taxonomy_models').find(q).sort({ name: 1 }).toArray();
-    return publicJ(sanitizeMany(items), 3600, 86400);
+    return publicJ(sanitizeMany(items), 60, 60);
   }
 
   // ---------- public products ----------
@@ -211,21 +216,21 @@ async function handleInner(req, { params }) {
       query.$or = [{ name: rx }, { brand: rx }, { model: rx }, { category: rx }];
     }
     const items = await db.collection('products').find(query).sort({ createdAt: -1 }).limit(limit).toArray();
-    return publicJ(sanitizeMany(items), 60, 300);
+    return publicJ(sanitizeMany(items), 30, 30);
   }
 
   if (method === 'GET' && path.startsWith('products/')) {
     const slug = path.replace('products/', '');
     const item = await db.collection('products').findOne({ slug, published: true });
     if (!item) return j({ error: 'Not found' }, 404);
-    return publicJ(sanitize(item), 60, 300);
+    return publicJ(sanitize(item), 30, 30);
   }
 
   // ---------- search ----------
   if (method === 'GET' && path === 'search') {
     const url = new URL(req.url);
     const q = (url.searchParams.get('q') || '').trim();
-    if (!q) return publicJ({ products: [], brands: [], categories: [], guides: [], reviews: [] }, 30, 120);
+    if (!q) return publicJ({ products: [], brands: [], categories: [], guides: [], reviews: [] }, 15, 30);
     const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
     const products = await db.collection('products')
       .find({ published: true, $or: [{ name: rx }, { brand: rx }, { model: rx }] })
@@ -240,19 +245,19 @@ async function handleInner(req, { params }) {
       categories: sanitizeMany(categories),
       guides: sanitizeMany(guides),
       reviews: [],
-    }, 30, 120);
+    }, 15, 30);
   }
 
   // ---------- public reviews ----------
   if (method === 'GET' && path === 'reviews') {
     const items = await db.collection('reviews').find({ published: true }).sort({ createdAt: -1 }).toArray();
-    return publicJ(sanitizeMany(items), 300, 1800);
+    return publicJ(sanitizeMany(items), 60, 60);
   }
   if (method === 'GET' && path.startsWith('reviews/')) {
     const slug = path.replace('reviews/', '');
     const item = await db.collection('reviews').findOne({ slug, published: true });
     if (!item) return j({ error: 'Not found' }, 404);
-    return publicJ(sanitize(item), 300, 1800);
+    return publicJ(sanitize(item), 60, 60);
   }
 
   // ---------- public guides ----------
@@ -262,13 +267,13 @@ async function handleInner(req, { params }) {
     const q = { published: true };
     if (category) q.category = category;
     const items = await db.collection('guides').find(q).sort({ createdAt: -1 }).toArray();
-    return publicJ(sanitizeMany(items), 300, 1800);
+    return publicJ(sanitizeMany(items), 60, 60);
   }
   if (method === 'GET' && path.startsWith('guides/')) {
     const slug = path.replace('guides/', '');
     const item = await db.collection('guides').findOne({ slug, published: true });
     if (!item) return j({ error: 'Not found' }, 404);
-    return publicJ(sanitize(item), 300, 1800);
+    return publicJ(sanitize(item), 60, 60);
   }
 
   // ---------- newsletter ----------
@@ -298,11 +303,6 @@ async function handleInner(req, { params }) {
   // ============================================================
   // ADMIN ROUTES (all guarded)
   // ============================================================
-  const admin = requireAdmin(req);
-  const adminRoute = path.startsWith('admin/');
-
-  if (adminRoute && !admin) return j({ error: 'Unauthorized' }, 401);
-
   // ---------- admin: stats ----------
   if (method === 'GET' && path === 'admin/stats') {
     const [productsTotal, productsPublished, categoriesTotal, brandsTotal, modelsTotal, reviewsTotal, guidesTotal, newsletterTotal] = await Promise.all([
