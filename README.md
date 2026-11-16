@@ -54,9 +54,16 @@ Never commit `.env` or real credentials. Configure production values in Vercel P
 ```bash
 yarn dev
 ```
-Open http://localhost:3000 — the DB auto-seeds 9 sample products on first hit.
+Open http://localhost:3000.
 
-### 4. Access Admin
+### 4. Database indexes (recommended)
+After configuring `MONGO_URL`, run this once to create indexes used by public product feeds, guides, reviews and admin authentication:
+```bash
+yarn db:index
+```
+This is a manual one-time setup; do not run index creation on every web request or during each Vercel function invocation.
+
+### 5. Access Admin
 1. Click **Admin** in the header
 2. Sign in using `ADMIN_EMAIL` and `ADMIN_PASSWORD` configured in the server environment.
 3. Add / edit / delete products, toggle Trending / Today's Deal / Featured / Publish
