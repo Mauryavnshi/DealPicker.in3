@@ -19,7 +19,7 @@ export default function HomePage() {
     let cancelled = false;
     (async () => {
       try {
-        const r = await fetch('/api/products');
+        const r = await fetch('/api/products?limit=24');
         const d = await r.json();
         if (!cancelled) setProducts(Array.isArray(d) ? d : []);
       } catch {

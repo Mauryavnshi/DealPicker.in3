@@ -12,9 +12,9 @@ export default function TodaysDealsPage() {
   const [products, setProducts] = useState(null);
   useEffect(() => {
     (async () => {
-      const r = await fetch('/api/products');
+      const r = await fetch('/api/products?todaysDeal=true&limit=60');
       const d = await r.json();
-      const list = Array.isArray(d) ? d.filter(p => p.todaysDeal) : [];
+      const list = Array.isArray(d) ? d : [];
       setProducts(list);
     })();
   }, []);

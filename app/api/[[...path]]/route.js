@@ -14,6 +14,14 @@ import { BRANDS as DEFAULT_BRANDS } from '@/lib/data/brands';
 
 const j = (data, status = 200) => NextResponse.json(data, { status });
 
+// Cache only public GET responses at Vercel's CDN. Keep admin and write responses uncached.
+const publicJ = (data, maxAge = 60, staleWhileRevalidate = 300) =>
+  NextResponse.json(data, {
+    headers: {
+      'Cache-Control': `public, s-maxage=${maxAge}, stale-while-revalidate=${staleWhileRevalidate}`,
+    },
+  });
+
 let _seededAdmin = false;
 let _seededTaxonomy = false;
 
@@ -112,7 +120,7 @@ async function handle(req, ctx) {
     // in Vercel's function logs instead of silently rendering empty
     // homepage sections.
     console.error('[api] unhandled error:', err);
-    return j({ error: 'Server error', detail: String(err?.message || err) }, 500);
+    return j({ error: 'Server error' }, 500);
   }
 }
 
@@ -121,15 +129,21 @@ async function handleInner(req, { params }) {
   const path = (p?.path || []).join('/');
   const method = req.method;
 
-  await ensureAdminSeed();
-  await ensureTaxonomySeed();
-  const db = await getDb();
-
-  // ---------- health ----------
+  // Health and token-only auth routes must not open MongoDB connections.
   if (method === 'GET' && path === 'health') return j({ ok: true, service: 'dealpicker', ts: Date.now() });
 
-  // ---------- auth ----------
+  if (method === 'GET' && path === 'auth/admin/me') {
+    const payload = requireAdmin(req);
+    if (!payload) return j({ error: 'Unauthorized' }, 401);
+    return j({ email: payload.email, role: payload.role });
+  }
+
+  if (method === 'POST' && path === 'auth/admin/logout') return j({ ok: true });
+
+  // Seed admin credentials and default taxonomy only during an explicit admin login,
+  // never on every public API request.
   if (method === 'POST' && (path === 'auth/admin/login' || path === 'admin/login')) {
+    await ensureAdminSeed();
     const body = await req.json().catch(() => ({}));
     const email = String(body.email || '').trim().toLowerCase();
     const password = String(body.password || '');
@@ -145,22 +159,24 @@ async function handleInner(req, { params }) {
     const ok = await verifyPassword(password, admin.passwordHash);
     if (!ok) { await recordFailedAttempt(identifier); return j({ error: 'Invalid email or password' }, 401); }
     await clearAttempts(identifier);
+    // Seed taxonomy only after successful authentication; failed login attempts
+    // must not trigger extra collection scans/writes.
+    await ensureTaxonomySeed();
     const token = signAdminToken({ email: admin.email });
     return j({ token, admin: { email: admin.email, role: admin.role } });
   }
 
-  if (method === 'GET' && path === 'auth/admin/me') {
-    const payload = requireAdmin(req);
-    if (!payload) return j({ error: 'Unauthorized' }, 401);
-    return j({ email: payload.email, role: payload.role });
-  }
+  // Guard every admin API route before opening a MongoDB connection.
+  const adminRoute = path.startsWith('admin/');
+  const admin = adminRoute ? requireAdmin(req) : null;
+  if (adminRoute && !admin) return j({ error: 'Unauthorized' }, 401);
 
-  if (method === 'POST' && path === 'auth/admin/logout') return j({ ok: true });
+  const db = await getDb();
 
   // ---------- public taxonomy ----------
   if (method === 'GET' && path === 'categories') {
     const items = await db.collection('taxonomy_categories').find({}).sort({ order: 1 }).toArray();
-    return j(sanitizeMany(items));
+    return publicJ(sanitizeMany(items), 60, 60);
   }
 
   if (method === 'GET' && path === 'brands') {
@@ -173,7 +189,7 @@ async function handleInner(req, { params }) {
       query = { slug: { $in: productBrands } };
     }
     const items = await db.collection('taxonomy_brands').find(query).sort({ order: 1 }).toArray();
-    return j(sanitizeMany(items));
+    return publicJ(sanitizeMany(items), 60, 60);
   }
 
   if (method === 'GET' && path === 'models') {
@@ -184,7 +200,7 @@ async function handleInner(req, { params }) {
     if (brand) q.brandSlug = brand;
     if (category) q.categorySlug = category;
     const items = await db.collection('taxonomy_models').find(q).sort({ name: 1 }).toArray();
-    return j(sanitizeMany(items));
+    return publicJ(sanitizeMany(items), 60, 60);
   }
 
   // ---------- public products ----------
@@ -197,26 +213,29 @@ async function handleInner(req, { params }) {
     const query = { published: true };
     if (category) query.category = category;
     if (brand) query.brandSlug = slugify(brand);
+    if (url.searchParams.get('todaysDeal') === 'true') query.todaysDeal = true;
+    if (url.searchParams.get('trending') === 'true') query.trending = true;
+    if (url.searchParams.get('featured') === 'true') query.featured = true;
     if (q) {
       const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
       query.$or = [{ name: rx }, { brand: rx }, { model: rx }, { category: rx }];
     }
     const items = await db.collection('products').find(query).sort({ createdAt: -1 }).limit(limit).toArray();
-    return j(sanitizeMany(items));
+    return publicJ(sanitizeMany(items), 30, 30);
   }
 
   if (method === 'GET' && path.startsWith('products/')) {
     const slug = path.replace('products/', '');
-    const item = await db.collection('products').findOne({ slug });
+    const item = await db.collection('products').findOne({ slug, published: true });
     if (!item) return j({ error: 'Not found' }, 404);
-    return j(sanitize(item));
+    return publicJ(sanitize(item), 30, 30);
   }
 
   // ---------- search ----------
   if (method === 'GET' && path === 'search') {
     const url = new URL(req.url);
     const q = (url.searchParams.get('q') || '').trim();
-    if (!q) return j({ products: [], brands: [], categories: [], guides: [], reviews: [] });
+    if (!q) return publicJ({ products: [], brands: [], categories: [], guides: [], reviews: [] }, 15, 30);
     const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
     const products = await db.collection('products')
       .find({ published: true, $or: [{ name: rx }, { brand: rx }, { model: rx }] })
@@ -225,25 +244,25 @@ async function handleInner(req, { params }) {
     const cats = await db.collection('taxonomy_categories').find({}).toArray();
     const categories = cats.filter(c => rx.test(c.name?.en || '') || rx.test(c.name?.hi || '')).slice(0, 5);
     const guides = await db.collection('guides').find({ published: true, $or: [{ 'content.en.title': rx }, { 'content.hi.title': rx }] }).limit(4).toArray();
-    return j({
+    return publicJ({
       products: sanitizeMany(products),
       brands: sanitizeMany(brandsAll),
       categories: sanitizeMany(categories),
       guides: sanitizeMany(guides),
       reviews: [],
-    });
+    }, 15, 30);
   }
 
   // ---------- public reviews ----------
   if (method === 'GET' && path === 'reviews') {
     const items = await db.collection('reviews').find({ published: true }).sort({ createdAt: -1 }).toArray();
-    return j(sanitizeMany(items));
+    return publicJ(sanitizeMany(items), 60, 60);
   }
   if (method === 'GET' && path.startsWith('reviews/')) {
     const slug = path.replace('reviews/', '');
     const item = await db.collection('reviews').findOne({ slug, published: true });
     if (!item) return j({ error: 'Not found' }, 404);
-    return j(sanitize(item));
+    return publicJ(sanitize(item), 60, 60);
   }
 
   // ---------- public guides ----------
@@ -253,13 +272,13 @@ async function handleInner(req, { params }) {
     const q = { published: true };
     if (category) q.category = category;
     const items = await db.collection('guides').find(q).sort({ createdAt: -1 }).toArray();
-    return j(sanitizeMany(items));
+    return publicJ(sanitizeMany(items), 60, 60);
   }
   if (method === 'GET' && path.startsWith('guides/')) {
     const slug = path.replace('guides/', '');
     const item = await db.collection('guides').findOne({ slug, published: true });
     if (!item) return j({ error: 'Not found' }, 404);
-    return j(sanitize(item));
+    return publicJ(sanitize(item), 60, 60);
   }
 
   // ---------- newsletter ----------
@@ -289,11 +308,6 @@ async function handleInner(req, { params }) {
   // ============================================================
   // ADMIN ROUTES (all guarded)
   // ============================================================
-  const admin = requireAdmin(req);
-  const adminRoute = path.startsWith('admin/');
-
-  if (adminRoute && !admin) return j({ error: 'Unauthorized' }, 401);
-
   // ---------- admin: stats ----------
   if (method === 'GET' && path === 'admin/stats') {
     const [productsTotal, productsPublished, categoriesTotal, brandsTotal, modelsTotal, reviewsTotal, guidesTotal, newsletterTotal] = await Promise.all([
