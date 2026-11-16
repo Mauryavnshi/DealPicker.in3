@@ -14,6 +14,14 @@ import { BRANDS as DEFAULT_BRANDS } from '@/lib/data/brands';
 
 const j = (data, status = 200) => NextResponse.json(data, { status });
 
+// Cache only public GET responses at Vercel's CDN. Keep admin and write responses uncached.
+const publicJ = (data, maxAge = 60, staleWhileRevalidate = 300) =>
+  NextResponse.json(data, {
+    headers: {
+      'Cache-Control': `public, s-maxage=${maxAge}, stale-while-revalidate=${staleWhileRevalidate}`,
+    },
+  });
+
 let _seededAdmin = false;
 let _seededTaxonomy = false;
 
@@ -161,7 +169,7 @@ async function handleInner(req, { params }) {
   // ---------- public taxonomy ----------
   if (method === 'GET' && path === 'categories') {
     const items = await db.collection('taxonomy_categories').find({}).sort({ order: 1 }).toArray();
-    return j(sanitizeMany(items));
+    return publicJ(sanitizeMany(items), 3600, 86400);
   }
 
   if (method === 'GET' && path === 'brands') {
@@ -174,7 +182,7 @@ async function handleInner(req, { params }) {
       query = { slug: { $in: productBrands } };
     }
     const items = await db.collection('taxonomy_brands').find(query).sort({ order: 1 }).toArray();
-    return j(sanitizeMany(items));
+    return publicJ(sanitizeMany(items), 3600, 86400);
   }
 
   if (method === 'GET' && path === 'models') {
@@ -185,7 +193,7 @@ async function handleInner(req, { params }) {
     if (brand) q.brandSlug = brand;
     if (category) q.categorySlug = category;
     const items = await db.collection('taxonomy_models').find(q).sort({ name: 1 }).toArray();
-    return j(sanitizeMany(items));
+    return publicJ(sanitizeMany(items), 3600, 86400);
   }
 
   // ---------- public products ----------
@@ -203,21 +211,21 @@ async function handleInner(req, { params }) {
       query.$or = [{ name: rx }, { brand: rx }, { model: rx }, { category: rx }];
     }
     const items = await db.collection('products').find(query).sort({ createdAt: -1 }).limit(limit).toArray();
-    return j(sanitizeMany(items));
+    return publicJ(sanitizeMany(items), 60, 300);
   }
 
   if (method === 'GET' && path.startsWith('products/')) {
     const slug = path.replace('products/', '');
     const item = await db.collection('products').findOne({ slug });
     if (!item) return j({ error: 'Not found' }, 404);
-    return j(sanitize(item));
+    return publicJ(sanitize(item), 60, 300);
   }
 
   // ---------- search ----------
   if (method === 'GET' && path === 'search') {
     const url = new URL(req.url);
     const q = (url.searchParams.get('q') || '').trim();
-    if (!q) return j({ products: [], brands: [], categories: [], guides: [], reviews: [] });
+    if (!q) return publicJ({ products: [], brands: [], categories: [], guides: [], reviews: [] }, 30, 120);
     const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
     const products = await db.collection('products')
       .find({ published: true, $or: [{ name: rx }, { brand: rx }, { model: rx }] })
@@ -226,25 +234,25 @@ async function handleInner(req, { params }) {
     const cats = await db.collection('taxonomy_categories').find({}).toArray();
     const categories = cats.filter(c => rx.test(c.name?.en || '') || rx.test(c.name?.hi || '')).slice(0, 5);
     const guides = await db.collection('guides').find({ published: true, $or: [{ 'content.en.title': rx }, { 'content.hi.title': rx }] }).limit(4).toArray();
-    return j({
+    return publicJ({
       products: sanitizeMany(products),
       brands: sanitizeMany(brandsAll),
       categories: sanitizeMany(categories),
       guides: sanitizeMany(guides),
       reviews: [],
-    });
+    }, 30, 120);
   }
 
   // ---------- public reviews ----------
   if (method === 'GET' && path === 'reviews') {
     const items = await db.collection('reviews').find({ published: true }).sort({ createdAt: -1 }).toArray();
-    return j(sanitizeMany(items));
+    return publicJ(sanitizeMany(items), 300, 1800);
   }
   if (method === 'GET' && path.startsWith('reviews/')) {
     const slug = path.replace('reviews/', '');
     const item = await db.collection('reviews').findOne({ slug, published: true });
     if (!item) return j({ error: 'Not found' }, 404);
-    return j(sanitize(item));
+    return publicJ(sanitize(item), 300, 1800);
   }
 
   // ---------- public guides ----------
@@ -254,13 +262,13 @@ async function handleInner(req, { params }) {
     const q = { published: true };
     if (category) q.category = category;
     const items = await db.collection('guides').find(q).sort({ createdAt: -1 }).toArray();
-    return j(sanitizeMany(items));
+    return publicJ(sanitizeMany(items), 300, 1800);
   }
   if (method === 'GET' && path.startsWith('guides/')) {
     const slug = path.replace('guides/', '');
     const item = await db.collection('guides').findOne({ slug, published: true });
     if (!item) return j({ error: 'Not found' }, 404);
-    return j(sanitize(item));
+    return publicJ(sanitize(item), 300, 1800);
   }
 
   // ---------- newsletter ----------
