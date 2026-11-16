@@ -34,12 +34,7 @@ async function ensureAdminSeed() {
 async function ensureTaxonomySeed() {
   if (_seededTaxonomy) return;
   try {
-    // Reject unauthenticated admin requests before opening a database connection.
-  const adminRoute = path.startsWith('admin/');
-  const admin = requireAdmin(req);
-  if (adminRoute && !admin) return j({ error: 'Unauthorized' }, 401);
-
-  const db = await getDb();
+    const db = await getDb();
     const cn = await db.collection('taxonomy_categories').countDocuments();
     if (cn === 0) {
       await db.collection('taxonomy_categories').insertMany(
@@ -168,6 +163,11 @@ async function handleInner(req, { params }) {
     const token = signAdminToken({ email: admin.email });
     return j({ token, admin: { email: admin.email, role: admin.role } });
   }
+
+  // Guard every admin API route before opening a MongoDB connection.
+  const adminRoute = path.startsWith('admin/');
+  const admin = adminRoute ? requireAdmin(req) : null;
+  if (adminRoute && !admin) return j({ error: 'Unauthorized' }, 401);
 
   const db = await getDb();
 
