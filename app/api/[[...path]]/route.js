@@ -144,7 +144,6 @@ async function handleInner(req, { params }) {
   // never on every public API request.
   if (method === 'POST' && (path === 'auth/admin/login' || path === 'admin/login')) {
     await ensureAdminSeed();
-    await ensureTaxonomySeed();
     const body = await req.json().catch(() => ({}));
     const email = String(body.email || '').trim().toLowerCase();
     const password = String(body.password || '');
@@ -160,6 +159,9 @@ async function handleInner(req, { params }) {
     const ok = await verifyPassword(password, admin.passwordHash);
     if (!ok) { await recordFailedAttempt(identifier); return j({ error: 'Invalid email or password' }, 401); }
     await clearAttempts(identifier);
+    // Seed taxonomy only after successful authentication; failed login attempts
+    // must not trigger extra collection scans/writes.
+    await ensureTaxonomySeed();
     const token = signAdminToken({ email: admin.email });
     return j({ token, admin: { email: admin.email, role: admin.role } });
   }
