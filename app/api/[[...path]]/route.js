@@ -121,15 +121,22 @@ async function handleInner(req, { params }) {
   const path = (p?.path || []).join('/');
   const method = req.method;
 
-  await ensureAdminSeed();
-  await ensureTaxonomySeed();
-  const db = await getDb();
-
-  // ---------- health ----------
+  // Health and token-only auth routes must not open MongoDB connections.
   if (method === 'GET' && path === 'health') return j({ ok: true, service: 'dealpicker', ts: Date.now() });
 
-  // ---------- auth ----------
+  if (method === 'GET' && path === 'auth/admin/me') {
+    const payload = requireAdmin(req);
+    if (!payload) return j({ error: 'Unauthorized' }, 401);
+    return j({ email: payload.email, role: payload.role });
+  }
+
+  if (method === 'POST' && path === 'auth/admin/logout') return j({ ok: true });
+
+  // Seed admin credentials and default taxonomy only during an explicit admin login,
+  // never on every public API request.
   if (method === 'POST' && (path === 'auth/admin/login' || path === 'admin/login')) {
+    await ensureAdminSeed();
+    await ensureTaxonomySeed();
     const body = await req.json().catch(() => ({}));
     const email = String(body.email || '').trim().toLowerCase();
     const password = String(body.password || '');
@@ -149,13 +156,7 @@ async function handleInner(req, { params }) {
     return j({ token, admin: { email: admin.email, role: admin.role } });
   }
 
-  if (method === 'GET' && path === 'auth/admin/me') {
-    const payload = requireAdmin(req);
-    if (!payload) return j({ error: 'Unauthorized' }, 401);
-    return j({ email: payload.email, role: payload.role });
-  }
-
-  if (method === 'POST' && path === 'auth/admin/logout') return j({ ok: true });
+  const db = await getDb();
 
   // ---------- public taxonomy ----------
   if (method === 'GET' && path === 'categories') {
